@@ -47,25 +47,37 @@ def convert_yolo_2_tf(label):
 
     # Fill in new boxes
     for i in range(numBoxes):
-        boxes[:,i,0] = (oldBoxes[i][2]-oldBoxes[i][4]/2)
-        boxes[:,i,1] = (oldBoxes[i][1]-oldBoxes[i][3]/2)
-        boxes[:,i,2] = (oldBoxes[i][2]+oldBoxes[i][4]/2)
-        boxes[:,i,3] = (oldBoxes[i][1]+oldBoxes[i][3]/2)
+        boxes[:,i,0] = oldBoxes[i][2]-oldBoxes[i][4]/2
+        boxes[:,i,1] = oldBoxes[i][1]-oldBoxes[i][3]/2
+        boxes[:,i,2] = oldBoxes[i][2]+oldBoxes[i][4]/2
+        boxes[:,i,3] = oldBoxes[i][1]+oldBoxes[i][3]/2
         boxesDict[oldBoxes[i][0]] = boxes[:,i,:]
         classes[i] = int(oldBoxes[i][0])
 
     return numBoxes, boxes, oldBoxes, classes, boxesDict
 
-def convert_tf_2_yolo(classes,labels,filename):
+def convert_tf_2_yolo(classes, oldBoxes, filename):
     # Takes in a list of classes and coordinates (assuming
     # that they are in the same order) and converts the array
     # [batch, number of bounding boxes, coords] for all 
     # from: [y_min, x_min, y_max, x_max] in % 
     # to: [center x, center y, width height] in %
     os.chdir(augmentPath)
-    labels = open(filename, 'w')
+    output = open(filename, 'w')
+    newBoxes = np.zeros([len(classes), 4])
     
-    
+    for i in range(len(classes)):
+        newBoxes[i][0] = (oldBoxes[:,i,1] + oldBoxes[:,i,3])/2
+        newBoxes[i][1] = (oldBoxes[:,i,0] + oldBoxes[:,i,2])/2
+        newBoxes[i][2] = (oldBoxes[:,i,3] - oldBoxes[:,i,1])
+        newBoxes[i][3] = (oldBoxes[:,i,2] - oldBoxes[:,i,0])
+        output.write('{} {:.7f} {:.7f} {:.7f} {:.7f}'
+                     .format(classes[i], newBoxes[i][0], newBoxes[i][1], 
+                     newBoxes[i][2], newBoxes[i][3])) 
+        if i < len(classes)-1:
+            output.write('\n')
+    output.close()
     
     
 num, boxes, oldBoxes, classes, boxesDict = convert_yolo_2_tf('labels.txt')
+convert_tf_2_yolo(classes, boxes, 'test.txt')
